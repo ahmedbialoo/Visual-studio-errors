@@ -1,0 +1,40 @@
+log error:Error |     Inner Exception: System.NotSupportedException: An attempt was made to load an assembly from a network location which would have caused the assembly to be sandboxed in previous versions of the .NET Framework. This release of the .NET Framework does not enable CAS policy by default, so this load may be dangerous. If this load is not intended to sandbox the assembly, please enable the loadFromRemoteSources switch. See http://go.microsoft.com/fwlink/?LinkId=155569 for more information.
+
+the problem: There is a package that extracted in AosServices Folder that was not unblocked before extarcting.
+
+How to recognize this problem:
+If database sync or a build fails with this message, check for blocked DLLs first:
+
+An attempt was made to load an assembly from a network location ... please enable the loadFromRemoteSources switch
+
+Resolution:
+Find all blocked DLLs with PowerShell
+Run PowerShell as Administrator:
+------- powerShell command -------
+Get-ChildItem "C:\AOSService\PackagesLocalDirectory\*\bin\*.dll", "C:\AOSService\PackagesLocalDirectory\*\Resources\*.dll" -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { Get-Item -LiteralPath $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue } |
+    Select-Object FullName
+----------------------------------
+If it shows nothing, no package DLLs are blocked.
+If it lists files, the folder name after PackagesLocalDirectory is the package that came from a downloaded zip.
+Unblock them
+
+To unblock one package, such as MPayroll:
+------- powerShell command -------
+Get-ChildItem "C:\AOSService\PackagesLocalDirectory\MPayroll" -Recurse -File | Unblock-File
+----------------------------------
+
+To unblock every package:
+------- powerShell command -------
+Get-ChildItem "C:\AOSService\PackagesLocalDirectory" -Recurse -File -Include *.dll, *.exe | Unblock-File
+----------------------------------
+The all-packages command is safe to run, but it can take a minute on a large dev machine.
+
+Prevent it next time
+The easiest fix is to unblock the zip file right after you download it, before you extract or deploy it. Right-click the zip, choose Properties, tick Unblock, and click OK. Or run:
+------- powerShell command -------
+Unblock-File -LiteralPath "C:\Users\localadmin\Downloads\YourPackage.zip"
+----------------------------------
+
+Files extracted from an unblocked zip will not be marked as downloaded.
+
